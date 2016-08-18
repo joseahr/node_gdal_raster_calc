@@ -1,44 +1,24 @@
-//console.log(process.argv);
+const { readDir, getAlpha, Exec, rasterFile, parseDate } = require('./util'),
+	// Directorio de donde coger los archivos raster
+	dataDir 		= './datos', 
 
-const fs 			= require('fs'),
-	Exec 			= require('child_process').exec,
-	path 			= require('path'),
-	dataDir 		= './datos', // Directorio de donde coger los archivos raster
-	reg 			= /.*p$/, // Regex detecto p al final del archivo
-
-	// Devuelve una letra entre A-Z y A1-Z1 si se supera length > 26
-	getNums 		= length => length <= 26 ? 
-		Array.from({length}, (el, i)=> String.fromCharCode(i + 65)) : 
-		Array.from({length : 26}, (el, i)=> String.fromCharCode(i + 65)).concat(Array.from({length : length - 26}, (el, i)=> String.fromCharCode(i + 65) + 1)),
-
-	// Comprueba que sea el tipo de archivo que se quiere
-	_RasterFile 	= file => reg.exec(file),
-	// Coge el fichero raster y obtiene la fecha
-	_ParseDate 		= date => new Date(
-		+date.substring(date.length - 5, date.length - 1), 
-		+date.substring(date.length - 7, date.length - 5) - 1, 
-		+date.substring(0, date.length - 7)
-	),
 	// Fecha de hoy
 	today 			= new Date(2016, 6, 29),
 	// Fecha hace 40 días
 	last40days 		= new Date(2016, 6, 29);
 	last40days.setDate(last40days.getDate() - 40);
 
-	// Lista de archivos finales
-	let listFiles 	= [];
 	// nombre del archivo resultante
 	let resultRasterName = `${today.getDate()}${today.getMonth() + 1 < 10 ? '0' + (today.getMonth() + 1) : today.getMonth() + 1}${today.getFullYear()}rp.tiff`;
 
-fs.readdir(dataDir, (err, files)=>{
-	if(err) return console.error(err);
-
+readDir(dataDir)
+.then( files =>{
 	// Ficheros filtrados con el Regex
-	let rasterFiles = files.filter(_RasterFile);
+	let rasterFiles = files.filter(rasterFile);
 	// Fecha de los ficheros anteriores
-	let dateList 	= rasterFiles.map(_ParseDate);
+	let dateList 	= rasterFiles.map(parseDate);
 	// Puesta en común de las dos listas
-	listFiles 		= rasterFiles.map( (f, i) => ({
+	let listFiles 		= rasterFiles.map( (f, i) => ({
 		name 	: f,
 		path 	: dataDir + '/' + f,
 		date 	: dateList[i]
@@ -49,7 +29,7 @@ fs.readdir(dataDir, (err, files)=>{
 	.sort( (a, b) => b.date.getTime() - a.date.getTime() );
 
 	// Array de letras en base a el número de archivos
-	let ArrayLetras = getNums(listFiles.length);
+	let ArrayLetras = getAlpha(listFiles.length);
 
 	// Expresión de los cálculos a realizar ej : A + B + C + ...
 	let calc = ArrayLetras.join(' + ');
@@ -60,7 +40,17 @@ fs.readdir(dataDir, (err, files)=>{
 
 	console.log('executing...', exec);
 
-	Exec(exec, (error, stdout, stderr)=>{
-		console.log(stdout);
-	});
+	return Exec(exec);
+
 })
+.then( stdout =>{
+	console.log(stdout);
+	// Comando para reclasificar valores
+	let exec = `gdal_calc.py -A ./${resultRasterName} --calc="(A*(A<=20)) + (20*(A>20))" --outfile xx${resultRasterName}`;
+	console.log('executing', exec);
+	return Exec(exec);
+})
+.then( stdout =>{
+	console.log('Fin', stdout);
+})
+.catch(console.error.bind(console)); 
