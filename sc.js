@@ -1,7 +1,6 @@
-const { readDir, getAlpha, Exec, rasterFile, parseDate } = require('./util'),
+const { readDir, getAlpha, Exec, rasterFile, parseDate, cmdOptions } = require('./util'),
 	// Directorio de donde coger los archivos raster
-	dataDir 		= './datos', 
-
+	{ directories = ['./datos'], outdir = './'} = cmdOptions.parse(process.argv.slice(2)).options,
 	// Fecha de hoy
 	today 			= new Date(2016, 6, 29),
 	// Fecha hace 40 días
@@ -11,16 +10,18 @@ const { readDir, getAlpha, Exec, rasterFile, parseDate } = require('./util'),
 	// nombre del archivo resultante
 	let resultRasterName = `${today.getDate()}${today.getMonth() + 1 < 10 ? '0' + (today.getMonth() + 1) : today.getMonth() + 1}${today.getFullYear()}rp.tiff`;
 
-readDir(dataDir)
+Promise.all(directories.map(d =>{
+	return readDir(d)
+	.then( files => files.map( f => ({ name : f, path : d + '/' + f }) ) )
+}))
 .then( files =>{
+	files = files.reduce( (a, b)=> a.concat(b));
 	// Ficheros filtrados con el Regex
 	let rasterFiles = files.filter(rasterFile);
 	// Fecha de los ficheros anteriores
 	let dateList 	= rasterFiles.map(parseDate);
 	// Puesta en común de las dos listas
-	let listFiles 		= rasterFiles.map( (f, i) => ({
-		name 	: f,
-		path 	: dataDir + '/' + f,
+	let listFiles 		= rasterFiles.map( (f, i) => Object.assign(f, {
 		date 	: dateList[i]
 	}))
 	// Cogiendo los ficheros de los últimos 40 días
@@ -35,8 +36,8 @@ readDir(dataDir)
 	let calc = ArrayLetras.join(' + ');
 
 	// Comando final que se ejecutará ej: gdal_calc.py -A ./datos/10072016p -B ... --calc="expresión" --outfile nombreArchivoFinal.tiff
-	let exec = listFiles.reduce( (execString, file, idx) => execString + '-' + ArrayLetras[idx] + ' ' + file.path + ' ', 'gdal_calc.py ') + 
-		'--calc="' + calc + '" --outfile ' + resultRasterName;
+	let exec = listFiles.reduce( (execString, file, idx) => `${execString}-${ArrayLetras[idx]} ${file.path} `, 'gdal_calc.py ') + 
+		`--calc="${calc}" --outfile ${outdir}/${resultRasterName}`;
 
 	console.log('executing...', exec);
 
@@ -46,7 +47,7 @@ readDir(dataDir)
 .then( stdout =>{
 	console.log(stdout);
 	// Comando para reclasificar valores
-	let exec = `gdal_calc.py -A ./${resultRasterName} --calc="(A*(A<=20)) + (20*(A>20))" --outfile xx${resultRasterName}`;
+	let exec = `gdal_calc.py -A ${outdir}/${resultRasterName} --calc="(A*(A<=20)) + (20*(A>20))" --outfile ${outdir}/${resultRasterName} --overwrite`;
 	console.log('executing', exec);
 	return Exec(exec);
 })

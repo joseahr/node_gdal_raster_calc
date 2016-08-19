@@ -1,8 +1,10 @@
-const BPromise 		= require('bluebird');
+const bPromise 		= require('bluebird');
 
-const readDir 		= BPromise.promisify(require('fs').readdir);
+const readDir 		= bPromise.promisify(require('fs').readdir);
 
-const Exec 			= BPromise.promisify(require('child_process').exec);
+const Exec 			= bPromise.promisify(require('child_process').exec);
+
+const cmdOptions 	= require('./opts');
 
 const getAlpha 		= length => {
     let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -16,12 +18,12 @@ const getAlpha 		= length => {
 };
 const reg 			= /.*p$/; // Regex detecto p al final del archivo
 // Comprueba que sea el tipo de archivo que se quiere
-const rasterFile 	= file => reg.exec(file);
+const rasterFile 	= ({name}) => reg.exec(name);
 // Coge el fichero raster y obtiene la fecha
-const parseDate 			= date => new Date(
-	+date.substring(date.length - 5, date.length - 1), 
-	+date.substring(date.length - 7, date.length - 5) - 1, 
-	+date.substring(0, date.length - 7)
+const parseDate 	= ({name}) => new Date(
+	+name.substring(name.length - 5, name.length - 1), 
+	+name.substring(name.length - 7, name.length - 5) - 1, 
+	+name.substring(0, name.length - 7)
 );
 
 module.exports = {
@@ -29,5 +31,6 @@ module.exports = {
 	getAlpha,
 	Exec,
 	rasterFile,
-	parseDate
+	parseDate,
+	cmdOptions
 }
