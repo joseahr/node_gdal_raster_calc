@@ -1,6 +1,6 @@
-const { readDir, getAlpha, Exec, rasterFile, parseDate, cmdOptions } = require('./util'),
+const { readDir, getAlpha, Exec, rasterFile, parseDate, 
+		cmdOptions : { directories = ['./datos'], outdir = '.'} } 	= require('./util'),
 	// Directorio de donde coger los archivos raster
-	{ directories = ['./datos'], outdir = './'} = cmdOptions.parse(process.argv.slice(2)).options,
 	// Fecha de hoy
 	today 			= new Date(2016, 6, 29),
 	// Fecha hace 40 días
@@ -15,6 +15,7 @@ Promise.all(directories.map(d =>{
 	.then( files => files.map( f => ({ name : f, path : d + '/' + f }) ) )
 }))
 .then( files =>{
+	// Concatenamos los Arrays de objetos (files)
 	files = files.reduce( (a, b)=> a.concat(b));
 	// Ficheros filtrados con el Regex
 	let rasterFiles = files.filter(rasterFile);

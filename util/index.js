@@ -32,5 +32,6 @@ module.exports = {
 	Exec,
 	rasterFile,
 	parseDate,
-	cmdOptions
+	cmdOptions,
+	bPromise
 }
